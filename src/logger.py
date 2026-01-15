@@ -50,7 +50,7 @@ class MailSenderLogger:
                     raise Exception("Não foi possível criar em temp")
             except Exception:
                 # Fallback 2: Diretório do executável
-                import sys
+                # sys já está importado no topo do arquivo
                 if getattr(sys, 'frozen', False):
                     self.logs_dir = Path(sys.executable).parent / 'AmatoolsMailSender' / 'logs'
                 else:
