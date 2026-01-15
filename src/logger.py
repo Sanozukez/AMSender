@@ -27,9 +27,36 @@ class MailSenderLogger:
         if MailSenderLogger._initialized:
             return
         
-        # Cria diretório de logs
+        # Cria diretório de logs (com parents=True para criar diretórios pais se necessário)
+        # Usa tratamento robusto de erros para evitar bloqueios do Windows Defender
+        def _safe_mkdir(path: Path) -> bool:
+            """Cria um diretório de forma segura."""
+            try:
+                path.mkdir(parents=True, exist_ok=True)
+                return True
+            except (OSError, PermissionError, FileNotFoundError, ValueError):
+                return False
+            except Exception:
+                return False
+        
+        # Tenta criar em Documents primeiro
         self.logs_dir = get_user_documents_dir() / 'AmatoolsMailSender' / 'logs'
-        self.logs_dir.mkdir(parents=True, exist_ok=True)
+        if not _safe_mkdir(self.logs_dir):
+            # Fallback 1: Diretório temporário
+            import tempfile
+            try:
+                self.logs_dir = Path(tempfile.gettempdir()) / 'AmatoolsMailSender' / 'logs'
+                if not _safe_mkdir(self.logs_dir):
+                    raise Exception("Não foi possível criar em temp")
+            except Exception:
+                # Fallback 2: Diretório do executável
+                import sys
+                if getattr(sys, 'frozen', False):
+                    self.logs_dir = Path(sys.executable).parent / 'AmatoolsMailSender' / 'logs'
+                else:
+                    from src.config import PROJECT_ROOT
+                    self.logs_dir = PROJECT_ROOT / 'AmatoolsMailSender' / 'logs'
+                _safe_mkdir(self.logs_dir)
         
         # Arquivo de log geral
         log_file = self.logs_dir / f'app_{datetime.now().strftime("%Y%m%d")}.log'

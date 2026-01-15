@@ -7,7 +7,14 @@ Suporta arquivos DOCX e TXT com placeholders.
 import re
 from pathlib import Path
 from typing import Dict, Optional
-from docx import Document
+
+# Importação lazy do docx para evitar erros se não estiver disponível
+try:
+    from docx import Document
+    DOCX_AVAILABLE = True
+except ImportError:
+    DOCX_AVAILABLE = False
+    Document = None
 
 class TemplateProcessor:
     """
@@ -39,6 +46,11 @@ class TemplateProcessor:
             extension = self.template_path.suffix.lower()
             
             if extension == '.docx':
+                # Verifica se docx está disponível
+                if not DOCX_AVAILABLE:
+                    import sys
+                    print("Erro: python-docx não está disponível. Não é possível processar arquivos .docx", file=sys.stderr)
+                    return False
                 # Lê arquivo DOCX
                 doc = Document(self.template_path)
                 # Concatena todos os parágrafos

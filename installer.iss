@@ -6,7 +6,7 @@
 #define MyAppPublisher "Amatools"
 #define MyAppURL "https://www.amatools.com.br"
 #define MyAppExeName "AMSender.exe"
-#define MyAppId "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
+#define MyAppId "{{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}}"
 
 [Setup]
 ; Informações básicas
@@ -52,9 +52,9 @@ Source: "config_example.env"; DestDir: "{app}"; Flags: ignoreversion
 Source: "README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "GUIA_OAUTH.md"; DestDir: "{app}"; Flags: ignoreversion
 ; Pasta credentials (vazia, para o usuário colocar o credentials.json)
-Source: "credentials\*"; DestDir: "{app}\credentials"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: DirExists("credentials")
+Source: "credentials\*"; DestDir: "{app}\credentials"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: DirExists(ExpandConstant('{src}\credentials'))
 ; Pasta exemplos
-Source: "exemplos\*"; DestDir: "{app}\exemplos"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: DirExists("exemplos")
+Source: "exemplos\*"; DestDir: "{app}\exemplos"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: DirExists(ExpandConstant('{src}\exemplos'))
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

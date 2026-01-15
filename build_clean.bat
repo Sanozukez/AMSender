@@ -1,11 +1,15 @@
 @echo off
-REM build.bat
-REM Script para fazer build do AMSender usando PyInstaller
+REM build_clean.bat
+REM Script para fazer build do AMSender usando ambiente virtual limpo
+REM Esta abordagem garante que apenas as dependências necessárias sejam incluídas
 
 echo ========================================
-echo AMSender - Build Script
+echo AMSender - Build Script (Ambiente Limpo)
 echo ========================================
 echo.
+
+REM Nome do ambiente virtual
+set VENV_NAME=venv_build
 
 REM Verifica se PyInstaller está instalado
 python -c "import PyInstaller" 2>nul
@@ -13,6 +17,22 @@ if errorlevel 1 (
     echo PyInstaller nao encontrado. Instalando...
     pip install pyinstaller
 )
+
+echo Criando ambiente virtual limpo...
+if exist %VENV_NAME% (
+    echo Removendo ambiente virtual existente...
+    rmdir /s /q %VENV_NAME%
+)
+
+python -m venv %VENV_NAME%
+
+echo Ativando ambiente virtual...
+call %VENV_NAME%\Scripts\activate.bat
+
+echo Instalando dependencias necessarias...
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+pip install pyinstaller
 
 echo Limpando builds anteriores...
 if exist build rmdir /s /q build
@@ -49,6 +69,9 @@ pyinstaller --name="AMSender" ^
     --hidden-import=lxml ^
     --hidden-import=lxml.etree ^
     --hidden-import=lxml._elementpath ^
+    --hidden-import=lxml ^
+    --hidden-import=lxml.etree ^
+    --hidden-import=lxml._elementpath ^
     --hidden-import=google.auth ^
     --hidden-import=google_auth_oauthlib ^
     --hidden-import=google.auth.transport.requests ^
@@ -57,49 +80,6 @@ pyinstaller --name="AMSender" ^
     --hidden-import=dotenv ^
     --hidden-import=PIL ^
     --hidden-import=PIL._tkinter_finder ^
-    --exclude-module=torch ^
-    --exclude-module=tensorflow ^
-    --exclude-module=transformers ^
-    --exclude-module=sklearn ^
-    --exclude-module=scipy ^
-    --exclude-module=matplotlib ^
-    --exclude-module=cv2 ^
-    --exclude-module=onnxruntime ^
-    --exclude-module=bitsandbytes ^
-    --exclude-module=gradio ^
-    --exclude-module=sympy ^
-    --exclude-module=numba ^
-    --exclude-module=llvmlite ^
-    --exclude-module=imageio ^
-    --exclude-module=altair ^
-    --exclude-module=timm ^
-    --exclude-module=torchvision ^
-    --exclude-module=uvicorn ^
-    --exclude-module=websockets ^
-    --exclude-module=anyio ^
-    --exclude-module=fsspec ^
-    --exclude-module=pydantic ^
-    --exclude-module=orjson ^
-    --exclude-module=jsonschema ^
-    --exclude-module=jsonschema_specifications ^
-    --exclude-module=wcwidth ^
-    --exclude-module=regex ^
-    --exclude-module=pygments ^
-    --exclude-module=jinja2 ^
-    --exclude-module=tzdata ^
-    --exclude-module=zoneinfo ^
-    --exclude-module=importlib_resources ^
-    --exclude-module=packaging ^
-    --hidden-import=typing_extensions ^
-    --exclude-module=zipp ^
-    --exclude-module=importlib_metadata ^
-    --exclude-module=setuptools ^
-    --exclude-module=distutils ^
-    --exclude-module=pycparser ^
-    --exclude-module=win32com ^
-    --exclude-module=pythoncom ^
-    --exclude-module=pywintypes ^
-    --exclude-module=psutil ^
     --collect-all ttkbootstrap ^
     --collect-all google.auth ^
     --collect-all googleapiclient ^
@@ -110,6 +90,7 @@ pyinstaller --name="AMSender" ^
 if errorlevel 1 (
     echo.
     echo ERRO: Falha ao criar executavel!
+    call %VENV_NAME%\Scripts\deactivate.bat
     pause
     exit /b 1
 )
@@ -121,5 +102,16 @@ echo ========================================
 echo.
 echo Executavel criado em: dist\AMSender.exe
 echo.
+echo Deseja remover o ambiente virtual? (S/N)
+set /p response=
+if /i "%response%"=="S" (
+    call %VENV_NAME%\Scripts\deactivate.bat
+    rmdir /s /q %VENV_NAME%
+    echo Ambiente virtual removido.
+) else (
+    echo Ambiente virtual mantido em: %VENV_NAME%
+    call %VENV_NAME%\Scripts\deactivate.bat
+)
+
 pause
 
