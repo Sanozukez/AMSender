@@ -1,0 +1,28 @@
+# mail-sender/requirements.txt
+# Dependências do projeto Mail Sender
+# Versões atualizadas para Python 3.10+ (Janeiro 2025)
+
+# Interface gráfica
+ttkbootstrap>=1.10.1
+Pillow>=10.2.0
+
+# Processamento de dados
+pandas>=2.2.0
+openpyxl>=3.1.5
+
+# Processamento de documentos
+python-docx>=1.1.2
+
+# Envio de emails via Google OAuth
+# Versões mais recentes e compatíveis (Janeiro 2025)
+google-auth>=2.27.0
+google-auth-oauthlib>=1.2.1
+google-auth-httplib2>=0.2.0
+google-api-python-client>=2.110.0
+
+# Utilitários
+python-dotenv>=1.0.1
+
+# Build (opcional - para criar executável)
+# pyinstaller>=6.3.0
+

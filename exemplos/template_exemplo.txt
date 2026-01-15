@@ -1,0 +1,12 @@
+Olá {{nome}},
+
+Esperamos que este email o encontre bem.
+
+Este é um exemplo de template personalizado. Você pode usar placeholders como:
+- {{nome}} - será substituído pelo nome do destinatário
+- {{email}} - será substituído pelo email do destinatário
+- Qualquer outra coluna do Excel pode ser usada como {{nome_da_coluna}}
+
+Atenciosamente,
+Equipe Amatools
+
