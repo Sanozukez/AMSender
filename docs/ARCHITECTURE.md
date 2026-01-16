@@ -17,6 +17,11 @@ Cada módulo/classe tem uma única responsabilidade:
 - **`exceptions.py`**: Apenas definições de exceções customizadas
 - **`ui/main_window.py`**: Apenas interface gráfica e orquestração
 
+### Regras de Placeholders
+- Formato aceito: `{{nome_da_coluna}}` apenas com letras, números e underscore (sem espaços ou acentos)
+- Placeholders inexistentes ou inválidos são removidos (ficam vazios) no email enviado
+- Exemplo válido: `{{nome_completo}}` para a coluna `Nome_Completo`
+
 ### SOLID
 
 #### S - Single Responsibility ✅
@@ -61,6 +66,10 @@ mail-sender/
 ├── credentials/                # Credenciais OAuth (não versionado)
 ├── requirements.txt
 └── README.md
+
+## Evidências de Envio
+- Comprovações são gravadas em `Documents/AmatoolsMailSender/<campanha-com-timestamp>/`
+- Conteúdo: `resumo.json`, um `.eml` por destinatário, cópias de anexos e template
 ```
 
 ## Robustez para Produção
@@ -142,4 +151,3 @@ O sistema foi projetado para ser facilmente extensível:
 - **Novos formatos de template**: Adicionar suporte em `TemplateProcessor`
 - **Novos formatos de entrada**: Adicionar leitores similares a `ExcelReader`
 - **Novos tipos de comprovação**: Estender `Comprovacao`
-

@@ -55,4 +55,3 @@ Você pode adicionar múltiplos anexos. Formatos suportados:
 
 O sistema usa um delay de 2.5 segundos entre envios por padrão (configurável no .env).
 Isso está de acordo com as recomendações do Google para evitar throttling.
-

@@ -18,9 +18,9 @@ try {
 }
 
 Write-Host "Limpando builds anteriores..." -ForegroundColor Yellow
-if (Test-Path "build") { Remove-Item -Recurse -Force "build" }
-if (Test-Path "dist") { Remove-Item -Recurse -Force "dist" }
-if (Test-Path "__pycache__") { Remove-Item -Recurse -Force "__pycache__" }
+if (Test-Path "..\build") { Remove-Item -Recurse -Force "..\build" }
+if (Test-Path "..\dist") { Remove-Item -Recurse -Force "..\dist" }
+if (Test-Path "..\__pycache__") { Remove-Item -Recurse -Force "..\__pycache__" }
 
 Write-Host ""
 Write-Host "Criando executável..." -ForegroundColor Green
@@ -32,9 +32,9 @@ $pyinstallerArgs = @(
     "--onefile",
     "--windowed",
     "--noconsole",
-    "--icon=image\icon.ico",
-    "--add-data", "src;src",
-    "--add-data", "image;image",
+    "--icon=..\image\icon.ico",
+    "--add-data", "..\src;src",
+    "--add-data", "..\image;image",
     "--hidden-import=ttkbootstrap",
     "--hidden-import=pandas",
     "--hidden-import=openpyxl",
@@ -109,7 +109,7 @@ $pyinstallerArgs = @(
     "--collect-all", "googleapiclient",
     "--collect-all", "docx",
     "--collect-submodules", "docx",
-    "main.py"
+    "..\\main.py"
 )
 
 pyinstaller @pyinstallerArgs
@@ -126,7 +126,7 @@ Write-Host "========================================" -ForegroundColor Green
 Write-Host "Build concluído com sucesso!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "Executável criado em: dist\AMSender.exe" -ForegroundColor Cyan
+Write-Host "Executável criado em: ..\\dist\\AMSender.exe" -ForegroundColor Cyan
 Write-Host ""
 Read-Host "Pressione Enter para sair"
 

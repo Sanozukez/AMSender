@@ -15,6 +15,7 @@ from email.mime.base import MIMEBase
 from email import encoders
 from email.utils import formatdate
 import uuid
+import hashlib
 
 from src.config import APP_DATA_DIR
 
@@ -85,6 +86,7 @@ class Comprovacao:
             'enviados': 0,
             'erros': 0,
             'metodo_envio': None,
+            'handshake': None,
             'remetente': None,
             'assunto': None,
             'emails': []
@@ -278,7 +280,10 @@ class Comprovacao:
         headers: Optional[Dict[str, str]] = None,
         timestamp_envio: Optional[datetime] = None,
         attachments_count: Optional[int] = None,
-        message_size: Optional[int] = None
+        message_size: Optional[int] = None,
+        attachments_hashes: Optional[Dict[str, str]] = None,
+        raw_message: Optional[str] = None,
+        history_id: Optional[str] = None
     ):
         """
         Registra envio de email no resumo com todas as evidências.
@@ -296,15 +301,25 @@ class Comprovacao:
             timestamp_envio: Timestamp do envio
             attachments_count: Número de anexos
             message_size: Tamanho da mensagem em bytes
+            attachments_hashes: Dicionário de hashes dos anexos
+            raw_message: Mensagem bruta
+            history_id: ID do histórico
         """
         if timestamp_envio is None:
             timestamp_envio = datetime.now()
         
         # Calcula tamanho do .eml se disponível
         eml_size = None
+        eml_hash = None
         if eml_path and eml_path.exists():
             try:
                 eml_size = eml_path.stat().st_size
+                # Hash SHA-256 para evidência
+                hasher = hashlib.sha256()
+                with open(eml_path, 'rb') as f:
+                    for chunk in iter(lambda: f.read(8192), b''):
+                        hasher.update(chunk)
+                eml_hash = hasher.hexdigest()
             except (OSError, PermissionError):
                 pass
         
@@ -320,8 +335,12 @@ class Comprovacao:
             'gmail_thread_id': gmail_thread_id,
             'message_id': message_id,
             'headers': headers or {},
+            'eml_sha256': eml_hash,
             'attachments_count': attachments_count,
-            'message_size_bytes': message_size or eml_size
+            'message_size_bytes': message_size or eml_size,
+            'attachments_hashes': attachments_hashes or {},
+            'raw_message': raw_message,
+            'history_id': history_id
         }
         
         self.resumo['emails'].append(email_data)
@@ -343,7 +362,7 @@ class Comprovacao:
             self.resumo['erros'] += 1
             self.log(f"✗ Erro ao enviar: {to_email} - {message}", 'ERROR')
     
-    def set_campaign_info(self, metodo_envio: str, remetente: str, assunto: str):
+    def set_campaign_info(self, metodo_envio: str, remetente: str, assunto: str, handshake: str = None):
         """
         Define informações gerais da campanha.
         
@@ -351,12 +370,16 @@ class Comprovacao:
             metodo_envio: Método usado (SMTP ou OAuth)
             remetente: Email do remetente
             assunto: Assunto do email
+            handshake: Detalhes do handshake/protocolo usado (opcional)
         """
         self.resumo['metodo_envio'] = metodo_envio
+        self.resumo['handshake'] = handshake
         self.resumo['remetente'] = remetente
         self.resumo['assunto'] = assunto
         
         self.log(f"Método de envio: {metodo_envio}")
+        if handshake:
+            self.log(f"Handshake: {handshake}")
         self.log(f"Remetente: {remetente}")
         self.log(f"Assunto: {assunto}")
     

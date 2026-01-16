@@ -76,5 +76,7 @@ dist/
 *.spec
 installer/
 *.exe
-!installer.iss
+!build_scripts/*.bat
+!build_scripts/*.ps1
+!build_scripts/installer.iss
 

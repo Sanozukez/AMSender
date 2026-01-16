@@ -10,11 +10,15 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
+from email.utils import formatdate
+import hashlib
 from pathlib import Path
 from typing import List, Optional, Callable, Tuple
 import ssl
 
 from src.config import SMTP_SERVER, SMTP_PORT, SMTP_EMAIL, SMTP_PASSWORD, EMAIL_DELAY
+from src.validators import Validators
+from src.logger import get_logger
 
 class EmailSender:
     """
@@ -46,8 +50,10 @@ class EmailSender:
             
             # Conecta ao servidor
             self.server = smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=30)
+            # Handshake recomendado: EHLO -> STARTTLS -> EHLO
+            self.server.ehlo()
             self.server.starttls(context=context)
-            
+            self.server.ehlo()
             # Autentica
             self.server.login(self.smtp_email, self.smtp_password)
             
@@ -108,6 +114,10 @@ class EmailSender:
         msg['From'] = self.smtp_email
         msg['To'] = to_email
         msg['Subject'] = subject
+        msg['Date'] = formatdate(localtime=True)
+        # Gera Message-ID cedo para logging e evidência
+        import uuid
+        msg['Message-ID'] = msg.get('Message-ID') or f"<{uuid.uuid4()}@amatools.com.br>"
         
         # Adiciona corpo do email
         msg.attach(MIMEText(body, 'plain', 'utf-8'))
@@ -129,11 +139,9 @@ class EmailSender:
                             )
                             msg.attach(part)
                     except (FileNotFoundError, PermissionError, OSError) as e:
-                        # Log erro mas continua com outros anexos
-                        pass
+                        get_logger().warning(f"Erro ao anexar arquivo {attachment_path}: {type(e).__name__}")
                     except Exception as e:
-                        # Log erro genérico
-                        pass
+                        get_logger().warning(f"Erro inesperado ao anexar {attachment_path}: {type(e).__name__}")
         
         return msg
     
@@ -176,12 +184,8 @@ class EmailSender:
                 for key, value in msg.items():
                     headers[key] = value
                 
-                # Gera Message-ID se não existir
+                # Já geramos Message-ID antes; garante leitura
                 message_id = headers.get('Message-ID')
-                if not message_id:
-                    import uuid
-                    message_id = f"<{uuid.uuid4()}@amatools.com.br>"
-                    headers['Message-ID'] = message_id
                 
                 return True, {
                     'message': "Email enviado com sucesso",
@@ -192,15 +196,19 @@ class EmailSender:
                 }
                 
             except smtplib.SMTPRecipientsRefused as e:
+                get_logger().warning(f"Destinatário recusado: {e}")
                 return False, f"Destinatário recusado: {e}"
             except smtplib.SMTPDataError as e:
+                get_logger().warning(f"Erro de dados SMTP: {e}")
                 return False, f"Erro de dados SMTP: {e}"
             except smtplib.SMTPException as e:
+                get_logger().warning(f"Erro SMTP: {e}")
                 if attempt < retry_count - 1:
                     time.sleep(2)  # Espera antes de tentar novamente
                     continue
                 return False, f"Erro SMTP: {e}"
             except Exception as e:
+                get_logger().exception(f"Erro inesperado ao enviar email: {e}")
                 return False, f"Erro inesperado: {e}"
         
         return False, "Falha após múltiplas tentativas"
@@ -247,6 +255,17 @@ class EmailSender:
                     'mensagem': 'Email não fornecido'
                 })
                 continue
+
+            # Valida email antes de enviar
+            is_valid, err_msg = Validators.validate_email(to_email)
+            if not is_valid:
+                erros += 1
+                detalhes.append({
+                    'email': to_email,
+                    'status': 'erro',
+                    'mensagem': err_msg or 'Email inválido'
+                })
+                continue
             
             # Obtém corpo do email
             try:
@@ -266,6 +285,18 @@ class EmailSender:
             if isinstance(result, tuple):
                 success, message = result
                 if success:
+                    # Calcula hashes dos anexos (se houver)
+                    att_hashes = {}
+                    if attachments:
+                        for att in attachments:
+                            try:
+                                h = hashlib.sha256()
+                                with open(att, 'rb') as f:
+                                    for chunk in iter(lambda: f.read(8192), b''):
+                                        h.update(chunk)
+                                att_hashes[Path(att).name] = h.hexdigest()
+                            except Exception:
+                                pass
                     enviados += 1
                     detalhes.append({
                         'email': to_email,
@@ -274,7 +305,8 @@ class EmailSender:
                         'gmail_message_id': message.get('gmail_message_id') if isinstance(message, dict) else None,
                         'gmail_thread_id': message.get('gmail_thread_id') if isinstance(message, dict) else None,
                         'message_id': message.get('message_id') if isinstance(message, dict) else None,
-                        'headers': message.get('headers', {}) if isinstance(message, dict) else {}
+                        'headers': message.get('headers', {}) if isinstance(message, dict) else {},
+                        'attachments_hashes': att_hashes
                     })
                 else:
                     erros += 1

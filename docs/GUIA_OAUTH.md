@@ -116,4 +116,3 @@ Após autenticar uma vez, você não precisará fazer login novamente. O token �
 - **NÃO precisa** fazer login como administrador (`aureo@amatools.com.br`) para usar o sistema
 - A conta de administrador só é necessária se você precisar **configurar** a tela de consentimento OAuth
 - Se você criou as credenciais, você pode usar sua própria conta para autenticar
-

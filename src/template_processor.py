@@ -31,6 +31,7 @@ class TemplateProcessor:
         self.template_path = Path(template_path)
         self.template_content: Optional[str] = None
         self.template_type: Optional[str] = None
+        self.last_error: str = ""
         
     def load(self) -> bool:
         """
@@ -39,8 +40,10 @@ class TemplateProcessor:
         Returns:
             bool: True se carregamento foi bem-sucedido, False caso contrário
         """
+        self.last_error = ""
         try:
             if not self.template_path.exists():
+                self.last_error = "Arquivo de template não encontrado."
                 return False
             
             extension = self.template_path.suffix.lower()
@@ -49,7 +52,8 @@ class TemplateProcessor:
                 # Verifica se docx está disponível
                 if not DOCX_AVAILABLE:
                     import sys
-                    print("Erro: python-docx não está disponível. Não é possível processar arquivos .docx", file=sys.stderr)
+                    self.last_error = "Dependência ausente: instale python-docx para ler .docx."
+                    print(self.last_error, file=sys.stderr)
                     return False
                 # Lê arquivo DOCX
                 doc = Document(self.template_path)
@@ -64,18 +68,22 @@ class TemplateProcessor:
                     self.template_content = f.read()
                 self.template_type = 'txt'
             else:
+                self.last_error = "Formato de template não suportado. Use .docx ou .txt."
                 return False
             
             return True
             
         except FileNotFoundError:
+            self.last_error = "Arquivo de template não encontrado."
             return False
         except PermissionError:
+            self.last_error = "Sem permissão para ler o template."
             return False
         except Exception as e:
             # Log do erro sem expor detalhes sensíveis
             import sys
-            print(f"Erro ao carregar template: {type(e).__name__}", file=sys.stderr)
+            self.last_error = f"Erro ao carregar template: {type(e).__name__}"
+            print(self.last_error, file=sys.stderr)
             return False
     
     def process(self, data: Dict[str, str]) -> str:
@@ -93,8 +101,7 @@ class TemplateProcessor:
         
         result = self.template_content
         
-        # Substitui placeholders no formato {{chave}}
-        # Busca todos os placeholders no template
+        # Substitui placeholders no formato {{chave}} (apenas letras/números/underscore)
         placeholders = re.findall(r'\{\{(\w+)\}\}', result)
         
         for placeholder in placeholders:
@@ -105,6 +112,8 @@ class TemplateProcessor:
             result = result.replace(f'{{{{{placeholder.upper()}}}}}', str(value))
             result = result.replace(f'{{{{{placeholder.capitalize()}}}}}', str(value))
         
+        # Remove quaisquer placeholders que sobraram (ex: com espaço/acentos não suportados)
+        result = re.sub(r'\{\{[^}]+\}\}', '', result)
         return result
     
     def get_preview(self, sample_data: Optional[Dict[str, str]] = None) -> str:

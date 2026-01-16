@@ -1,112 +1,51 @@
-# Amatools Mail Sender - Sistema de Envio em Massa de Emails
+# Amatools Mail Sender - Envio em Massa
 
-## Descrição
-
-Sistema com interface gráfica para envio em massa de emails personalizados via Google Workspace (SMTP), com suporte a anexos, templates personalizáveis e sistema de comprovação de envios.
+Sistema com interface gráfica (Tkinter + ttkbootstrap) para envio em massa de emails personalizados via SMTP (senha de app) ou Gmail API (OAuth), com logs, evidências e preview.
 
 ## Características
-
-- ✅ Interface gráfica moderna e minimalista (Tkinter + ttkbootstrap)
-- ✅ Leitura de destinatários de planilha Excel
-- ✅ Templates personalizáveis (DOCX ou TXT) com placeholders
-- ✅ Suporte a múltiplos anexos
-- ✅ Delay automático entre envios (conforme recomendações do Google)
-- ✅ Sistema de comprovação: logs, arquivos .eml e resumo JSON
-- ✅ Tratamento robusto de erros e retry automático
-- ✅ Preview do email antes do envio
+- Interface gráfica simples; preview antes de enviar
+- Leitura de destinatários em Excel (pandas/openpyxl)
+- Templates TXT/DOCX com placeholders estritos (letras/números/underscore)
+- Suporte a múltiplos anexos
+- Delay automático entre envios; retry e erros detalhados
+- Evidências completas em `Documentos/AmatoolsMailSender`: `.eml`, hashes, headers, raw (OAuth) e `resumo.json`
 
 ## Requisitos
-
-- Python 3.8 ou superior
-- Conta Google Workspace com senha de app configurada
+- Python 3.10+ (recomendado 3.11 ou 3.12)
 - Windows 10/11
+- Autenticação: senha de app SMTP **ou** Google OAuth (credentials.json)
 
-## Instalação
-
-1. Clone ou baixe o projeto
-2. Instale as dependências:
-```bash
+## Instalação rápida
+```powershell
 pip install -r requirements.txt
 ```
 
-3. Configure as credenciais:
-   - Copie `config_example.env` para `.env`
-   - Preencha com suas credenciais SMTP do Google Workspace
-   - Use uma senha de app (não a senha normal da conta)
-
-## Como Obter Senha de App do Google
-
-1. Acesse sua conta Google
-2. Ative a verificação em duas etapas (se ainda não tiver)
-3. Vá em: Conta Google → Segurança → Verificação em duas etapas → Senhas de app
-4. Crie uma nova senha de app para "Email"
-5. Use essa senha no arquivo `.env`
+## Autenticação
+- **SMTP (senha de app)**: copie `config_example.env` para `.env` e preencha SMTP/porta/usuario/senha de app.
+- **OAuth (Gmail API)**: coloque `credentials/credentials.json`; na UI selecione Google OAuth e clique em "Autenticar" (guia em `docs/GUIA_OAUTH.md`). Tokens ficam em `credentials/token_<email>.pickle`.
 
 ## Uso
-
-1. Execute o sistema:
-```bash
+```powershell
 python main.py
 ```
+Na interface: escolha Excel, template, anexos e método de envio; veja o preview e clique em "Iniciar Envio".
 
-2. Na interface:
-   - Selecione o arquivo Excel com os destinatários
-   - Selecione o template (DOCX ou TXT)
-   - Selecione os anexos (pode ser múltiplos)
-   - Configure o assunto do email
-   - Visualize o preview
-   - Clique em "Iniciar Envio"
+## Planilha e templates
+- Excel: cabeçalho na primeira linha; coluna obrigatória `email`. Outros campos podem ser usados como placeholders.
+- Placeholders válidos: `{{nome_da_coluna}}` apenas com letras/números/underscore (sem espaços/acentos). Inválidos são limpos.
+- Exemplos em `docs/README_EXEMPLOS.md`.
 
-## Formato do Excel
+## Evidências
+Cada campanha cria `Documentos/AmatoolsMailSender/<campanha>-<timestamp>/` com:
+- `resumo.json` (status, IDs, headers, hashes, historyId/raw quando OAuth)
+- `.eml` por destinatário (com SHA-256 registrado)
+- Cópias de anexos e template; log txt da campanha
 
-O arquivo Excel deve ter a primeira linha como cabeçalho. Colunas obrigatórias:
-- `email`: Email do destinatário
-- `nome`: Nome do destinatário (para personalização)
+## Documentação
+- Arquitetura e princípios: `docs/ARCHITECTURE.md`
+- Guia OAuth: `docs/GUIA_OAUTH.md`
+- Build/instalador: `docs/BUILD_INSTRUCTIONS.md`
+- Exemplos: `docs/README_EXEMPLOS.md`
 
-Colunas adicionais podem ser usadas como placeholders no template.
-
-## Templates
-
-Use placeholders no formato `{{nome}}`, `{{email}}`, etc. no template.
-
-Exemplo de template TXT:
-```
-Olá {{nome}},
-
-Este é um email personalizado para {{email}}.
-
-Atenciosamente,
-Equipe
-```
-
-## Comprovação de Envios
-
-O sistema gera:
-- **Logs detalhados**: `logs/envio_YYYYMMDD_HHMMSS.log`
-- **Arquivos .eml**: `comprovacoes/YYYYMMDD_HHMMSS/` (um por email enviado)
-- **Resumo JSON**: `comprovacoes/YYYYMMDD_HHMMSS/resumo.json`
-
-Os arquivos .eml podem ser abertos em qualquer cliente de email como comprovação.
-
-## Estrutura de Pastas
-
-```
-mail-sender/
-├── main.py                 # Aplicação principal
-├── src/
-│   ├── config.py          # Configurações e carregamento de .env
-│   ├── excel_reader.py    # Leitura de planilhas Excel
-│   ├── template_processor.py  # Processamento de templates
-│   ├── email_sender.py    # Envio via SMTP
-│   ├── comprovacao.py     # Sistema de comprovação
-│   └── ui/
-│       └── main_window.py # Interface gráfica
-├── requirements.txt
-├── .env                    # Suas credenciais (não versionado)
-└── README.md
-```
-
-## Licença
-
-Uso interno - Amatools
+Licença: uso interno Amatools.
 

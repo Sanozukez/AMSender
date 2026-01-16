@@ -7,7 +7,7 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Verifica se o executável foi criado
-if (-not (Test-Path "dist\AMSender.exe")) {
+if (-not (Test-Path "..\dist\AMSender.exe")) {
     Write-Host "ERRO: Executável não encontrado!" -ForegroundColor Red
     Write-Host "Execute build.ps1 primeiro para criar o executável." -ForegroundColor Yellow
     Read-Host "Pressione Enter para sair"
@@ -41,8 +41,8 @@ if ($null -eq $innoSetupPath) {
 }
 
 Write-Host "Criando diretório de instalador..." -ForegroundColor Yellow
-if (-not (Test-Path "installer")) {
-    New-Item -ItemType Directory -Path "installer" | Out-Null
+if (-not (Test-Path "..\installer")) {
+    New-Item -ItemType Directory -Path "..\installer" | Out-Null
 }
 
 Write-Host ""
@@ -63,7 +63,7 @@ Write-Host "========================================" -ForegroundColor Green
 Write-Host "Instalador criado com sucesso!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "Instalador criado em: installer\AMSender_Setup.exe" -ForegroundColor Cyan
+Write-Host "Instalador criado em: ..\installer\AMSender_Setup.exe" -ForegroundColor Cyan
 Write-Host ""
 Read-Host "Pressione Enter para sair"
 

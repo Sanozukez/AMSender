@@ -113,7 +113,7 @@ Template de Email:
 
 Eles são substituídos automaticamente pelos valores correspondentes de cada linha da planilha Excel.
 
-Formato: {{nome_da_coluna}}
+Formato aceito: {{nome_da_coluna}} apenas com letras, números e underscore (sem espaços ou acentos).
 
 Exemplo: Se sua planilha tem uma coluna chamada "nome", você pode usar {{nome}} no template."""
     
@@ -132,8 +132,9 @@ Exemplo: Se sua planilha tem uma coluna chamada "nome", você pode usar {{nome}}
 
 IMPORTANTE:
 - Use o nome exato da coluna (case-insensitive)
-- Colunas com espaços: use o nome exato, ex: {{Nome Completo}}
-- Colunas obrigatórias: "email" (deve existir na planilha)"""
+- Só são aceitos placeholders sem espaços/acentos: use {{nome_completo}} em vez de {{Nome Completo}}
+- Se um placeholder não existir ou tiver formato inválido, ele é removido do email (fica vazio)
+- Coluna obrigatória: "email" (deve existir na planilha)"""
     
     ttk.Label(section2_inner, text=section2_text.strip(), font=("Segoe UI", 10), justify=LEFT, wraplength=800).pack(anchor=W)
     

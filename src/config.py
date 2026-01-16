@@ -107,8 +107,8 @@ if not _safe_mkdir(APP_DATA_DIR) or not _safe_mkdir(LOGS_DIR):
             _safe_mkdir(APP_DATA_DIR)
             _safe_mkdir(LOGS_DIR)
 
-# Mantém compatibilidade com código antigo
-COMPROVACOES_DIR = LOGS_DIR
+# Caminho real das comprovações (Documentos/AmatoolsMailSender/<campanha>)
+COMPROVACOES_DIR = APP_DATA_DIR
 
 def reload_config():
     """

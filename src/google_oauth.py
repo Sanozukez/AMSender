@@ -6,7 +6,6 @@ Gerencia login via OAuth e salvamento de tokens.
 
 import os
 import json
-import pickle
 import warnings
 from pathlib import Path
 from typing import Optional, Tuple
@@ -15,6 +14,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from src.oauth.token_store import TokenStore
 
 # Escopos necessários para envio de emails e leitura de perfil
 # gmail.send: permite enviar emails
@@ -47,6 +47,7 @@ class GoogleOAuth:
         safe_email = email.replace('@', '_at_').replace('.', '_')
         self.token_file = self.credentials_dir / f'token_{safe_email}.pickle'
         self.credentials_file = self.credentials_dir / 'credentials.json'
+        self.token_store = TokenStore(self.token_file)
         
         self.creds: Optional[Credentials] = None
         self.service = None
@@ -69,8 +70,7 @@ class GoogleOAuth:
             return False
         
         try:
-            with open(self.token_file, 'rb') as token:
-                self.creds = pickle.load(token)
+            self.creds = self.token_store.load()
             
             logger.debug(f"Credenciais carregadas. Válidas: {self.creds.valid if self.creds else False}")
             logger.debug(f"Credenciais expiradas: {self.creds.expired if self.creds else False}")
@@ -87,7 +87,7 @@ class GoogleOAuth:
             logger.debug(f"Resultado final is_authenticated: {is_valid}")
             return is_valid
             
-        except (FileNotFoundError, PermissionError, pickle.UnpicklingError) as e:
+        except (FileNotFoundError, PermissionError, Exception) as e:
             logger.warning(f"Erro ao verificar autenticação: {type(e).__name__}")
             return False
         except Exception as e:
@@ -118,8 +118,7 @@ class GoogleOAuth:
         try:
             # Verifica se já tem credenciais salvas
             if self.token_file.exists():
-                with open(self.token_file, 'rb') as token:
-                    self.creds = pickle.load(token)
+                self.creds = self.token_store.load()
             
             # Se não tem credenciais válidas, faz login
             if not self.creds or not self.creds.valid:
@@ -377,8 +376,7 @@ class GoogleOAuth:
             return
         
         try:
-            with open(self.token_file, 'wb') as token:
-                pickle.dump(self.creds, token)
+            self.token_store.save(self.creds)
         except (IOError, OSError, PermissionError) as e:
             raise Exception(f"Erro ao salvar credenciais: {type(e).__name__}")
         except Exception as e:
@@ -411,8 +409,7 @@ class GoogleOAuth:
             bool: True se revogado com sucesso
         """
         try:
-            if self.token_file.exists():
-                self.token_file.unlink()
+            self.token_store.delete()
             
             if self.creds:
                 try:

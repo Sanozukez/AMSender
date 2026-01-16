@@ -21,9 +21,9 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 LicenseFile=
-OutputDir=installer
+OutputDir=..\installer
 OutputBaseFilename=AMSender_Setup
-SetupIconFile=image\icon.ico
+SetupIconFile=..\image\icon.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
@@ -45,16 +45,16 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 
 [Files]
 ; Executável principal
-Source: "dist\AMSender.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\dist\AMSender.exe"; DestDir: "{app}"; Flags: ignoreversion
 ; Arquivos de configuração exemplo
-Source: "config_example.env"; DestDir: "{app}"; Flags: ignoreversion
-; README
-Source: "README.md"; DestDir: "{app}"; Flags: ignoreversion
-Source: "GUIA_OAUTH.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\config_example.env"; DestDir: "{app}"; Flags: ignoreversion
+; Documentação
+Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\docs\*"; DestDir: "{app}\docs"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; Pasta credentials (vazia, para o usuário colocar o credentials.json)
-Source: "credentials\*"; DestDir: "{app}\credentials"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: DirExists(ExpandConstant('{src}\credentials'))
+Source: "..\credentials\*"; DestDir: "{app}\credentials"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: DirExists(ExpandConstant('{src}\..\credentials'))
 ; Pasta exemplos
-Source: "exemplos\*"; DestDir: "{app}\exemplos"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: DirExists(ExpandConstant('{src}\exemplos'))
+Source: "..\exemplos\*"; DestDir: "{app}\exemplos"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: DirExists(ExpandConstant('{src}\..\exemplos'))
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

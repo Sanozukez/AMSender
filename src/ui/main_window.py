@@ -19,6 +19,7 @@ from src.excel_reader import ExcelReader
 from src.template_processor import TemplateProcessor
 from src.email_sender import EmailSender
 from src.comprovacao import Comprovacao
+from src.batch_controller import BatchController
 
 class MainWindow:
     """
@@ -44,6 +45,8 @@ class MainWindow:
         
         # Gerenciador de configurações
         self.config_manager = ConfigManager()
+        self.batch_controller = BatchController(log_fn=self._log, stats_fn=self._update_stats)
+        self._ui_thread_id = threading.get_ident()
         
         # Cria janela principal
         self.root = ttk.Window(themename="cosmo")  # Tema moderno e minimalista
@@ -116,6 +119,13 @@ class MainWindow:
         
         # Atualiza preview inicial
         self._update_preview()
+
+    def _run_on_ui_thread(self, func, *args, **kwargs):
+        """Garante que a função rode na thread da UI."""
+        if threading.get_ident() == self._ui_thread_id:
+            func(*args, **kwargs)
+        else:
+            self.root.after(0, lambda: func(*args, **kwargs))
     
     def _create_ui(self):
         """
@@ -578,7 +588,8 @@ Delay recomendado: 2.5 segundos (para lotes de 50-300 emails)
             # Lê Excel
             excel_reader = ExcelReader(self.excel_path.get())
             if not excel_reader.read():
-                self.preview_text.insert(1.0, "Erro ao ler planilha Excel.")
+                error_msg = excel_reader.last_error or "Erro ao ler planilha Excel."
+                self.preview_text.insert(1.0, error_msg)
                 return
             
             recipients = excel_reader.get_recipients()
@@ -589,7 +600,8 @@ Delay recomendado: 2.5 segundos (para lotes de 50-300 emails)
             # Processa template
             template_processor = TemplateProcessor(self.template_path.get())
             if not template_processor.load():
-                self.preview_text.insert(1.0, "Erro ao carregar template.")
+                error_msg = template_processor.last_error or "Erro ao carregar template."
+                self.preview_text.insert(1.0, error_msg)
                 return
             
             # Preview com primeiro destinatário
@@ -619,9 +631,11 @@ Delay recomendado: 2.5 segundos (para lotes de 50-300 emails)
         """
         Adiciona mensagem ao log.
         """
-        self.log_text.insert(tk.END, f"{message}\n")
-        self.log_text.see(tk.END)
-        self.root.update_idletasks()
+        def _write():
+            self.log_text.insert(tk.END, f"{message}\n")
+            self.log_text.see(tk.END)
+            self.root.update_idletasks()
+        self._run_on_ui_thread(_write)
     
     def _start_sending(self):
         """
@@ -644,12 +658,12 @@ Delay recomendado: 2.5 segundos (para lotes de 50-300 emails)
         try:
             self.excel_reader = ExcelReader(self.excel_path.get())
             if not self.excel_reader.read():
-                messagebox.showerror("Erro", "Erro ao ler planilha Excel.")
+                messagebox.showerror("Erro", self.excel_reader.last_error or "Erro ao ler planilha Excel.")
                 return
             
             self.template_processor = TemplateProcessor(self.template_path.get())
             if not self.template_processor.load():
-                messagebox.showerror("Erro", "Erro ao carregar template.")
+                messagebox.showerror("Erro", self.template_processor.last_error or "Erro ao carregar template.")
                 return
             
             recipients = self.excel_reader.get_recipients()
@@ -711,11 +725,13 @@ Delay recomendado: 2.5 segundos (para lotes de 50-300 emails)
             excel_emails=excel_emails
         )
         
-        # Define informações da campanha
+        # Define informações da campanha (inclui handshake para evidência)
+        handshake = "EHLO/STARTTLS/EHLO" if not self.use_oauth.get() else "HTTPS Gmail API"
         self.comprovacao.set_campaign_info(
             metodo_envio=metodo_envio,
             remetente=remetente,
-            assunto=self.subject.get()
+            assunto=self.subject.get(),
+            handshake=handshake
         )
         
         # Atualiza UI
@@ -740,131 +756,28 @@ Delay recomendado: 2.5 segundos (para lotes de 50-300 emails)
         Worker thread para envio de emails.
         """
         try:
-            # Conecta (SMTP ou OAuth)
-            if self.use_oauth.get():
-                # Usa Gmail API
-                if not self.gmail_sender or not self.gmail_sender.is_authenticated():
-                    self._log("ERRO: Não autenticado no Google.")
-                    self._finish_sending()
-                    return
-                self._log("Usando Gmail API (OAuth) para envio.")
-            else:
-                # Usa SMTP
-                if not self.email_sender.connect():
-                    self._log("ERRO: Não foi possível conectar ao servidor SMTP.")
-                    self._finish_sending()
-                    return
-                self._log("Conectado ao servidor SMTP com sucesso.")
-            
-            # Função para obter corpo do email
-            def get_body(recipient_data: dict) -> str:
-                return self.template_processor.process(recipient_data)
-            
-            # Callback de progresso
-            def progress_callback(current: int, total: int, recipient: dict):
-                email = recipient.get('email', 'N/A')
-                self._log(f"[{current}/{total}] Enviando para {email}...")
-                self._update_stats(current, total, 0)  # Erros serão atualizados depois
-            
-            # Envia emails
-            if self.use_oauth.get():
-                # Usa Gmail API
-                stats = self.gmail_sender.send_batch(
-                    recipients=recipients,
-                    subject=self.subject.get(),
-                    get_body=get_body,
-                    attachments=self.attachments if self.attachments else None,
-                    progress_callback=progress_callback,
-                    stop_flag=lambda: self.should_stop
-                )
-            else:
-                # Usa SMTP
-                stats = self.email_sender.send_batch(
-                    recipients=recipients,
-                    subject=self.subject.get(),
-                    get_body=get_body,
-                    attachments=self.attachments if self.attachments else None,
-                    progress_callback=progress_callback,
-                    stop_flag=lambda: self.should_stop
-                )
-            
-            # Processa resultados e salva comprovações
-            for detail in stats['detalhes']:
-                email = detail['email']
-                status = detail['status']
-                message = detail['mensagem']
-                
-                if status == 'enviado':
-                    # Salva .eml com todas as informações
-                    recipient_data = next((r for r in recipients if r.get('email') == email), {})
-                    body = get_body(recipient_data)
-                    if self.use_oauth.get():
-                        from_email = self.google_email.get() or "email@exemplo.com"
-                    else:
-                        from_email = self.smtp_email.get() or SMTP_EMAIL or "email@exemplo.com"
-                    
-                    # Extrai informações de evidência
-                    gmail_message_id = detail.get('gmail_message_id')
-                    gmail_thread_id = detail.get('gmail_thread_id')
-                    message_id = detail.get('message_id')
-                    headers = detail.get('headers', {})
-                    
-                    # Salva .eml
-                    eml_path = self.comprovacao.save_eml(
-                        to_email=email,
-                        subject=self.subject.get(),
-                        body=body,
-                        from_email=from_email,
-                        attachments=self.attachments if self.attachments else None,
-                        message_id=message_id,
-                        headers=headers
-                    )
-                    
-                    # Calcula número de anexos
-                    attachments_count = len(self.attachments) if self.attachments else 0
-                    
-                    # Registra com todas as evidências
-                    self.comprovacao.register_email(
-                        to_email=email,
-                        subject=self.subject.get(),
-                        attachments_count=attachments_count,
-                        status='enviado',
-                        message=message,
-                        eml_path=eml_path,
-                        gmail_message_id=gmail_message_id,
-                        gmail_thread_id=gmail_thread_id,
-                        message_id=message_id,
-                        headers=headers,
-                        timestamp_envio=datetime.now()
-                    )
-                else:
-                    self.comprovacao.register_email(
-                        to_email=email,
-                        subject=self.subject.get(),
-                        status='erro',
-                        message=message,
-                        eml_path=None,
-                        attachments_count=len(self.attachments) if self.attachments else 0
-                    )
-            
-            # Finaliza comprovação
-            self.comprovacao.finalize()
-            
-            # Atualiza estatísticas finais
-            self._update_stats(stats['total'], stats['enviados'], stats['erros'])
-            
-            # Log final
+            from_email = (self.google_email.get() if self.use_oauth.get() else self.smtp_email.get()) or SMTP_EMAIL or "email@exemplo.com"
+            sender = self.gmail_sender if self.use_oauth.get() else self.email_sender
+
+            stats = self.batch_controller.run(
+                recipients=recipients,
+                subject=self.subject.get(),
+                attachments=self.attachments if self.attachments else None,
+                template_processor=self.template_processor,
+                comprovacao=self.comprovacao,
+                sender=sender,
+                use_oauth=self.use_oauth.get(),
+                from_email=from_email,
+                stop_flag=lambda: self.should_stop,
+            )
+
             self._log("="*60)
-            self._log(f"Envio finalizado!")
-            self._log(f"Total: {stats['total']}")
-            self._log(f"Enviados: {stats['enviados']}")
-            self._log(f"Erros: {stats['erros']}")
+            self._log("Envio finalizado!")
+            self._log(f"Total: {stats.get('total', 0)}")
+            self._log(f"Enviados: {stats.get('enviados', 0)}")
+            self._log(f"Erros: {stats.get('erros', 0)}")
             self._log(f"Comprovações salvas em: {self.comprovacao.get_campanha_dir()}")
             self._log("="*60)
-            
-            # Desconecta (se SMTP)
-            if not self.use_oauth.get() and self.email_sender:
-                self.email_sender.disconnect()
             
         except Exception as e:
             self._log(f"ERRO CRÍTICO: {e}")
@@ -889,17 +802,21 @@ Delay recomendado: 2.5 segundos (para lotes de 50-300 emails)
         """
         Finaliza processo de envio e atualiza UI.
         """
-        self.is_sending = False
-        self.start_btn.config(state=NORMAL)
-        self.pause_btn.config(state=DISABLED)
-        self.stop_btn.config(state=DISABLED)
+        def _finish():
+            self.is_sending = False
+            self.start_btn.config(state=NORMAL)
+            self.pause_btn.config(state=DISABLED)
+            self.stop_btn.config(state=DISABLED)
+        self._run_on_ui_thread(_finish)
     
     def _update_stats(self, total: int, enviados: int, erros: int):
         """
         Atualiza estatísticas na interface.
         """
-        self.stats_label.config(text=f"Total: {total} | Enviados: {enviados} | Erros: {erros}")
-        self.root.update_idletasks()
+        def _set():
+            self.stats_label.config(text=f"Total: {total} | Enviados: {enviados} | Erros: {erros}")
+            self.root.update_idletasks()
+        self._run_on_ui_thread(_set)
     
     def _load_config(self):
         """

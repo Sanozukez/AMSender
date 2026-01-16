@@ -23,6 +23,7 @@ class ExcelReader:
         self.excel_path = Path(excel_path)
         self.df: Optional[pd.DataFrame] = None
         self.headers: List[str] = []
+        self.last_error: str = ""
         
     def read(self) -> bool:
         """
@@ -31,9 +32,23 @@ class ExcelReader:
         Returns:
             bool: True se leitura foi bem-sucedida, False caso contrário
         """
+        self.last_error = ""
         try:
             # Lê o Excel (suporta .xlsx e .xls)
-            self.df = pd.read_excel(self.excel_path, engine='openpyxl')
+            extension = self.excel_path.suffix.lower()
+            engine = None
+            # Define engine por extensão para evitar erro silencioso em .xls
+            if extension == '.xlsx':
+                engine = 'openpyxl'
+            elif extension == '.xls':
+                engine = 'xlrd'
+            try:
+                self.df = pd.read_excel(self.excel_path, engine=engine)
+            except ImportError:
+                # Engine específica não instalada
+                missing = 'openpyxl' if extension == '.xlsx' else 'xlrd'
+                self.last_error = f"Dependência ausente para ler {extension}: instale {missing}."
+                return False
             
             # Remove linhas completamente vazias
             self.df = self.df.dropna(how='all')
@@ -43,6 +58,7 @@ class ExcelReader:
             
             # Valida coluna obrigatória 'email'
             if 'email' not in self.headers:
+                self.last_error = "Planilha sem a coluna obrigatória 'email'."
                 return False
             
             # Normaliza nome da coluna email (case-insensitive)
@@ -62,11 +78,13 @@ class ExcelReader:
             return True
             
         except FileNotFoundError:
+            self.last_error = "Arquivo não encontrado."
             return False
         except Exception as e:
             # Log do erro sem expor detalhes sensíveis
             import sys
-            print(f"Erro ao ler Excel: {type(e).__name__}", file=sys.stderr)
+            self.last_error = f"Erro ao ler Excel: {type(e).__name__}"
+            print(self.last_error, file=sys.stderr)
             return False
     
     def get_recipients(self) -> List[Dict[str, str]]:
