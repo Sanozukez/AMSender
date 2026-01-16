@@ -28,9 +28,11 @@ pyinstaller --name="AMSender" ^
     --onefile ^
     --windowed ^
     --noconsole ^
-    --icon=image\icon.ico ^
-    --add-data "src;src" ^
-    --add-data "image;image" ^
+    --distpath=..\dist ^
+    --workpath=..\build ^
+    --icon=..\image\icon.ico ^
+    --add-data "..\src;src" ^
+    --add-data "..\image;image" ^
     --hidden-import=ttkbootstrap ^
     --hidden-import=pandas ^
     --hidden-import=openpyxl ^

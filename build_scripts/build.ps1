@@ -32,6 +32,8 @@ $pyinstallerArgs = @(
     "--onefile",
     "--windowed",
     "--noconsole",
+    "--distpath=..\dist",
+    "--workpath=..\build",
     "--icon=..\image\icon.ico",
     "--add-data", "..\src;src",
     "--add-data", "..\image;image",
